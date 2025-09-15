@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // DOČASNÉ: Úplne otvorené pravidlá pre testovanie
+    // POZOR: Toto je len pre testovanie! V produkcii použij bezpečnejšie pravidlá
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,0 +1,272 @@
+
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GroupPocket - Zdieľanie výdavkov</title>
+    <link rel="stylesheet" href="./styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        // Firebase konfigurácia - GroupPocket projekt
+        const firebaseConfig = {
+            apiKey: "AIzaSyBe3IpLHA-KOBkVpBL7bHP0RwxwN_DOGoA",
+            authDomain: "grouppocket-402df.firebaseapp.com",
+            projectId: "grouppocket-402df",
+            storageBucket: "grouppocket-402df.firebasestorage.app",
+            messagingSenderId: "321578774200",
+            appId: "1:321578774200:web:a62b3a2ad2e0355e21ce4d",
+            measurementId: "G-34MYJBFRM9"
+        };
+        
+        try {
+            console.log('🔥 Inicializujem Firebase...');
+            console.log('🔍 Konfigurácia:', firebaseConfig);
+            
+            // Inicializácia Firebase
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            
+            // Exportuj do globálnej premennej
+            window.firebaseApp = app;
+            window.firebaseDB = db;
+            window.firebaseCollection = collection;
+            window.firebaseAddDoc = addDoc;
+            window.firebaseGetDocs = getDocs;
+            window.firebaseDoc = doc;
+            window.firebaseGetDoc = getDoc;
+            window.firebaseQuery = query;
+            window.firebaseWhere = where;
+            window.firebaseUpdateDoc = updateDoc;
+            
+            console.log('✅ Firebase úspešne inicializovaný!');
+            console.log('🔍 Firebase objekty:', {
+                app: !!window.firebaseApp,
+                db: !!window.firebaseDB,
+                collection: !!window.firebaseCollection,
+                addDoc: !!window.firebaseAddDoc
+            });
+        } catch (error) {
+            console.error('❌ Chyba pri inicializácii Firebase:', error);
+            console.error('❌ Error details:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+            console.log('💡 Firebase nie je dostupný, používam simuláciu');
+            
+            // Fallback pre testovanie
+            window.firebaseApp = null;
+            window.firebaseDB = null;
+            window.firebaseCollection = () => console.log('Firebase nie je nakonfigurovaný');
+            window.firebaseAddDoc = () => console.log('Firebase nie je nakonfigurovaný');
+            window.firebaseGetDocs = () => console.log('Firebase nie je nakonfigurovaný');
+            window.firebaseDoc = () => console.log('Firebase nie je nakonfigurovaný');
+            window.firebaseGetDoc = () => console.log('Firebase nie je nakonfigurovaný');
+            window.firebaseQuery = () => console.log('Firebase nie je nakonfigurovaný');
+            window.firebaseWhere = () => console.log('Firebase nie je nakonfigurovaný');
+            window.firebaseUpdateDoc = () => console.log('Firebase nie je nakonfigurovaný');
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">💰 GroupPocket</h1>
+            <p class="subtitle">Jednoduché zdieľanie výdavkov</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Skupiny sekcia -->
+            <div class="card" id="groupsCard">
+                <h2 class="card-title">Skupiny</h2>
+                
+                <div class="group-actions">
+                    <button id="createGroupBtn" class="btn btn-secondary">
+                        Vytvoriť novú skupinu
+                    </button>
+                    <button id="joinGroupBtn" class="btn btn-secondary">
+                        Pripájať sa ku skupine
+                    </button>
+                    <button id="listGroupsBtn" class="btn btn-secondary">
+                        Zobraziť všetky skupiny
+                    </button>
+                </div>
+                
+                <!-- Pripojené skupiny -->
+                <div id="connectedGroups" class="connected-groups" style="display: none;">
+                    <h3>Moje skupiny</h3>
+                    <div id="connectedGroupsList" class="connected-groups-list">
+                        <!-- Pripojené skupiny sa vygenerujú dynamicky -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aktuálna skupina -->
+            <div id="currentGroup" class="current-group" style="display: none;">
+                <h3>Aktuálna skupina:</h3>
+                <div class="group-info">
+                    <span id="groupName">Názov skupiny</span>
+                    <span id="groupID">ID: ABC123</span>
+                </div>
+                
+                <!-- Členovia skupiny -->
+                <div class="members-section">
+                    <h4>Členovia skupiny (<span id="memberCount">0</span>)</h4>
+                    <div class="add-member">
+                        <input type="text" id="newMemberName" placeholder="Meno člena" class="member-input">
+                        <button id="addMemberBtn" class="btn btn-secondary">Pridať člena</button>
+                    </div>
+                    <div id="membersList" class="members-list"></div>
+                </div>
+                
+                <!-- Výdavky skupiny -->
+                <div class="expenses-section">
+                    <h4>Výdavky skupiny</h4>
+                    <div class="expenses-summary">
+                        <div class="summary-item">
+                            <span class="summary-label">Celkové výdavky:</span>
+                            <span id="totalExpenses" class="summary-value">0.00 €</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Na osobu:</span>
+                            <span id="perPersonAmount" class="summary-value">0.00 €</span>
+                        </div>
+                    </div>
+                    <div class="add-expense">
+                        <input type="text" id="expenseDescription" placeholder="Popis výdavku" class="expense-input">
+                        <input type="number" id="expenseAmount" placeholder="Suma (€)" step="0.01" class="expense-input">
+                        <button id="addExpenseBtn" class="btn btn-secondary">Pridať výdavok</button>
+                    </div>
+                    <div id="expensesList" class="expenses-list"></div>
+                </div>
+                
+                <div class="group-actions-bottom">
+                    <button id="refreshGroupBtn" class="btn btn-secondary">🔄 Obnoviť</button>
+                    <button id="payMeBtn" class="btn btn-success">💰 Vyplatiť</button>
+                    <button id="leaveGroupBtn" class="btn btn-danger">Opustiť skupinu</button>
+                </div>
+            </div>
+
+            <!-- Výdavky sekcia -->
+            <div class="card" id="expensesCard" style="display: none;">
+                <div class="expenses-header">
+                    <button id="backToGroupBtn" class="btn btn-secondary">← Späť ku skupine</button>
+                    <h2 class="card-title">Rozdeliť výdavok</h2>
+                </div>
+                
+                <form id="expenseForm" class="expense-form">
+                    <div class="input-group">
+                        <label for="amount">Suma (€)</label>
+                        <input 
+                            type="number" 
+                            id="amount" 
+                            name="amount" 
+                            placeholder="0.00" 
+                            step="0.01" 
+                            min="0.01" 
+                            required
+                        >
+                    </div>
+
+                    <div class="input-group">
+                        <label for="people">Počet ľudí</label>
+                        <input 
+                            type="number" 
+                            id="people" 
+                            name="people" 
+                            placeholder="2" 
+                            min="2" 
+                            max="20" 
+                            required
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Rozdeliť sumu
+                    </button>
+                </form>
+
+                <div id="result" class="result-section" style="display: none;">
+                    <div class="result-header">
+                        <h3>Výsledok rozdelenia</h3>
+                        <div class="total-info">
+                            <span class="total-amount">Celková suma: <strong id="totalAmount">0.00 €</strong></span>
+                            <span class="per-person">Na osobu: <strong id="perPerson">0.00 €</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="payment-buttons" id="paymentButtons">
+                        <!-- Tlačidlá pre platby sa vygenerujú dynamicky -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 GroupPocket - Verzia 0.1</p>
+        </footer>
+    </div>
+
+    <!-- Modálne okná -->
+    <div id="createGroupModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Vytvoriť novú skupinu</h3>
+            <form id="createGroupForm">
+                <div class="input-group">
+                    <label for="groupNameInput">Názov skupiny</label>
+                    <input type="text" id="groupNameInput" placeholder="Napríklad: Výlet do Tatier" required>
+                </div>
+                <div class="input-group">
+                    <label for="createUsernameInput">Tvoja prezívka</label>
+                    <input type="text" id="createUsernameInput" placeholder="Napríklad: Martin" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelCreateGroup" class="btn btn-secondary">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Vytvoriť skupinu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="joinGroupModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Pripájať sa ku skupine</h3>
+            <form id="joinGroupForm">
+                <div class="input-group">
+                    <label for="groupIDInput">ID skupiny</label>
+                    <input type="text" id="groupIDInput" placeholder="Zadajte ID skupiny" required>
+                </div>
+                <div class="input-group">
+                    <label for="joinUsernameInput">Tvoja prezívka</label>
+                    <input type="text" id="joinUsernameInput" placeholder="Napríklad: Martin" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelJoinGroup" class="btn btn-secondary">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Pripájať sa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- DEBUG: Skontroluj či sa načítal script -->
+    <script>
+        console.log('🔍 HTML načítaný, čakám na script.js...');
+        
+        // Skontroluj či existujú potrebné elementy
+        setTimeout(() => {
+            console.log('🔍 Kontrola elementov po 1s:');
+            console.log('- Form:', document.getElementById('expenseForm') ? '✅' : '❌');
+            console.log('- Result:', document.getElementById('result') ? '✅' : '❌');
+            console.log('- Payment buttons:', document.getElementById('paymentButtons') ? '✅' : '❌');
+        }, 1000);
+    </script>
+    
+    <script src="./script.js"></script>
+</body>
+</html>
