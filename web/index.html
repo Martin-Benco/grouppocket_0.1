@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="GroupPocket - Zdieľanie výdavkov aplikácia">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#141414">
+  <meta name="apple-mobile-web-app-title" content="GroupPocket">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>GroupPocket</title>
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <style>
+    html, body {
+      background-color: #141414;
+      min-height: 100vh;
+      height: 100%;
+    }
+    body { margin: 0; }
+    /* Rezerva pod iOS home/search barom + kontinuálne pozadie */
+    body::after {
+      content: '';
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: env(safe-area-inset-bottom, 0);
+      background: #141414;
+      pointer-events: none;
+      z-index: 9999;
+    }
+    #flutter_container,
+    flt-glass-pane,
+    .flt-glass-pane {
+      padding-bottom: env(safe-area-inset-bottom, 0);
+      background: #141414;
+    }
+  </style>
+  <script src="flutter_bootstrap.js" async></script>
+
+</body>
+</html>

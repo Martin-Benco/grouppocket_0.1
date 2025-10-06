@@ -1,1088 +1,859 @@
-// ===== GROUP POCKET DEBUG SCRIPT =====
-console.log('🚀 Script.js načítaný!');
+// ===== GROUP POCKET V2 SCRIPT =====
+console.log('🚀 GroupPocket V2 Script.js načítaný!');
 
-// Globálne premenné pre skupiny
-let currentGroup = null;
-let groupMembers = [];
-let groupExpenses = [];
-let currentUsername = '';
-let connectedGroups = [];
+// Globálne premenné
+let currentPage = 'quick-split';
+let currentUsername = 'Kristína';
 
-// Session storage kľúče
-const STORAGE_KEYS = {
-    CONNECTED_GROUPS: 'groupPocket_connectedGroups',
-    CURRENT_USERNAME: 'groupPocket_username'
+// QuickSplit data
+let quickSplitData = {
+    amount: 0,
+    participants: [
+        { name: 'Martin (ty)', selected: true, amount: 0 },
+        { name: 'Kristína', selected: true, amount: 0 },
+        { name: 'Jozef', selected: false, amount: 0 }
+    ],
+    payer: 'Martin',
+    splitItems: []
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 DOM načítaný, inicializujem aplikáciu...');
+    console.log('📄 DOM načítaný, inicializujem aplikáciu V2...');
     
-    // Elementy pre výdavky
-        const form = document.getElementById('expenseForm');
-    const resultSection = document.getElementById('result');
-    const totalAmountEl = document.getElementById('totalAmount');
-    const perPersonEl = document.getElementById('perPerson');
-    const paymentButtons = document.getElementById('paymentButtons');
+    // Inicializácia navigácie
+    initializeNavigation();
     
-    // Elementy pre skupiny
-    const groupsCard = document.getElementById('groupsCard');
-    const expensesCard = document.getElementById('expensesCard');
-    const createGroupBtn = document.getElementById('createGroupBtn');
-    const joinGroupBtn = document.getElementById('joinGroupBtn');
-    const currentGroupDiv = document.getElementById('currentGroup');
-    const groupNameSpan = document.getElementById('groupName');
-    const groupIDSpan = document.getElementById('groupID');
-    const leaveGroupBtn = document.getElementById('leaveGroupBtn');
+    // Inicializácia stránok
+    initializePages();
     
-    // Elementy pre členov
-    const memberCountSpan = document.getElementById('memberCount');
-    const newMemberNameInput = document.getElementById('newMemberName');
-    const addMemberBtn = document.getElementById('addMemberBtn');
-    const membersListDiv = document.getElementById('membersList');
-    
-    // Elementy pre výdavky
-    const expenseDescriptionInput = document.getElementById('expenseDescription');
-    const expenseAmountInput = document.getElementById('expenseAmount');
-    const addExpenseBtn = document.getElementById('addExpenseBtn');
-    const expensesListDiv = document.getElementById('expensesList');
-    const totalExpensesSpan = document.getElementById('totalExpenses');
-    const perPersonAmountSpan = document.getElementById('perPersonAmount');
-    
-    // Elementy pre pripojené skupiny
-    const connectedGroupsDiv = document.getElementById('connectedGroups');
-    const connectedGroupsListDiv = document.getElementById('connectedGroupsList');
-    
-    // Elementy pre debug
-    const listGroupsBtn = document.getElementById('listGroupsBtn');
-    
-    // Elementy pre skupinové akcie
-    const splitExpensesBtn = document.getElementById('splitExpensesBtn');
-    const backToGroupBtn = document.getElementById('backToGroupBtn');
-    const refreshGroupBtn = document.getElementById('refreshGroupBtn');
-    const payMeBtn = document.getElementById('payMeBtn');
-    
-    // Modálne okná
-    const createGroupModal = document.getElementById('createGroupModal');
-    const joinGroupModal = document.getElementById('joinGroupModal');
-    const createGroupForm = document.getElementById('createGroupForm');
-    const joinGroupForm = document.getElementById('joinGroupForm');
-    const cancelCreateGroup = document.getElementById('cancelCreateGroup');
-    const cancelJoinGroup = document.getElementById('cancelJoinGroup');
-    
-    // Debug: skontroluj či sa našli elementy
-    console.log('🔍 Debug elementov:');
-    console.log('- Form:', form ? '✅' : '❌');
-    console.log('- Result section:', resultSection ? '✅' : '❌');
-    console.log('- Groups card:', groupsCard ? '✅' : '❌');
-    console.log('- Expenses card:', expensesCard ? '✅' : '❌');
+    // Spusti animované demo pre input sumy
+    startAmountTypingAnimation();
 
-    const DEFAULT_IBAN = 'SK2111000000002932830628';
-    const CURRENCY = 'EUR';
+    console.log('✅ Aplikácia V2 inicializovaná!');
+});
 
-    // ===== SESSION STORAGE FUNKCIE =====
+// ===== NAVIGÁCIA =====
+
+function initializeNavigation() {
+    const navTabs = document.querySelectorAll('.nav-tab');
     
-    function loadFromSession() {
-        try {
-            const savedGroups = sessionStorage.getItem(STORAGE_KEYS.CONNECTED_GROUPS);
-            const savedUsername = sessionStorage.getItem(STORAGE_KEYS.CURRENT_USERNAME);
-            
-            if (savedGroups) {
-                connectedGroups = JSON.parse(savedGroups);
-                console.log('📱 Načítané pripojené skupiny:', connectedGroups);
-            }
-            
-            if (savedUsername) {
-                currentUsername = savedUsername;
-                console.log('👤 Načítaná prezívka:', currentUsername);
-            }
-            
-            updateConnectedGroupsDisplay();
-        } catch (error) {
-            console.error('❌ Chyba pri načítavaní z session storage:', error);
-        }
+    navTabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = tab.getAttribute('data-page');
+            switchToPage(pageId);
+        });
+    });
+}
+
+function switchToPage(pageId) {
+    console.log('🔄 Prepínam na stránku:', pageId);
+    
+    // Aktualizuj aktívnu navigačnú záložku
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+    
+    // Získaj aktuálnu a novú stránku
+    const currentPageElement = document.querySelector('.page.active');
+    const newPageElement = document.getElementById(`${pageId}-page`);
+    
+    if (!newPageElement || newPageElement === currentPageElement) {
+            return;
     }
     
-    function saveToSession() {
-        try {
-            sessionStorage.setItem(STORAGE_KEYS.CONNECTED_GROUPS, JSON.stringify(connectedGroups));
-            sessionStorage.setItem(STORAGE_KEYS.CURRENT_USERNAME, currentUsername);
-            console.log('💾 Uložené do session storage');
-        } catch (error) {
-            console.error('❌ Chyba pri ukladaní do session storage:', error);
-        }
+    // Urči smer animácie
+    const pages = ['quick-split', 'pockets', 'account'];
+    const currentIndex = pages.indexOf(currentPage);
+    const newIndex = pages.indexOf(pageId);
+    
+    if (newIndex > currentIndex) {
+        // Ideme doprava - nová stránka prichádza z prava
+        newPageElement.classList.add('next');
+        newPageElement.classList.remove('prev');
+        } else {
+        // Ideme doľava - nová stránka prichádza z ľava
+        newPageElement.classList.add('prev');
+        newPageElement.classList.remove('next');
     }
     
-    function addToConnectedGroups(groupData, username) {
-        const groupInfo = {
-            ...groupData,
-            username: username,
-            joinedAt: new Date(),
-            lastAccessed: new Date()
+    // Spusti animáciu
+    setTimeout(() => {
+        if (currentPageElement) {
+            currentPageElement.classList.remove('active');
+            if (newIndex > currentIndex) {
+                currentPageElement.classList.add('prev');
+        } else {
+                currentPageElement.classList.add('next');
+            }
+        }
+        
+        newPageElement.classList.add('active');
+        newPageElement.classList.remove('prev', 'next');
+        
+        currentPage = pageId;
+        console.log('✅ Stránka prepnutá na:', pageId);
+    }, 10);
+}
+
+// ===== INICIALIZÁCIA STRÁNOK =====
+
+function initializePages() {
+    // QuickSplit stránka
+    initializeQuickSplitPage();
+    
+    // Pockets stránka
+    initializePocketsPage();
+    
+    // Account stránka
+    initializeAccountPage();
+}
+
+function initializeQuickSplitPage() {
+    console.log('⚡ Inicializujem QuickSplit stránku');
+    
+    // Event listenery pre QuickSplit
+    const payButton = document.querySelector('.pay-button');
+    const shareButton = document.querySelector('.share-button');
+    const amountInput = document.getElementById('amountInputAnimated');
+    const splitItemsField = document.querySelector('.split-items-field');
+    const editButton = document.querySelector('.edit-button');
+    const payerField = document.querySelector('.payer-field');
+    
+    // Inicializácia účastníkov
+    initializeParticipants();
+    
+    // Inicializácia platiča
+    initializePayer();
+    
+    if (payButton) {
+        payButton.addEventListener('click', () => {
+            console.log('💰 Klik na Zaplatiť');
+            handlePayment();
+        });
+    }
+    
+    if (shareButton) {
+        shareButton.addEventListener('click', () => {
+            console.log('📤 Klik na Zdieľať QuickSplit');
+            handleShare();
+        });
+    }
+    
+    if (splitItemsField) {
+        splitItemsField.addEventListener('click', () => {
+            console.log('📝 Klik na Rozdeliť na položky');
+            showSplitItemsModal();
+        });
+    }
+    
+    if (editButton) {
+        editButton.addEventListener('click', () => {
+            console.log('✏️ Klik na Upraviť účastníkov');
+            showParticipantsModal();
+        });
+    }
+    
+    if (payerField) {
+        payerField.addEventListener('click', () => {
+            console.log('👤 Klik na výber platiča');
+            showPayerModal();
+        });
+    }
+
+    if (amountInput) {
+        const lockCaret = (el) => {
+            const v = el.value || '';
+            const pos = Math.max(0, v.length - 1);
+            el.setSelectionRange(pos, pos);
         };
-        
-        // Odstráň duplikáty
-        connectedGroups = connectedGroups.filter(g => g.id !== groupData.id);
-        connectedGroups.push(groupInfo);
-        
-        saveToSession();
-        updateConnectedGroupsDisplay();
-    }
-    
-    function removeFromConnectedGroups(groupId) {
-        connectedGroups = connectedGroups.filter(g => g.id !== groupId);
-        saveToSession();
-        updateConnectedGroupsDisplay();
-    }
-    
-    function updateConnectedGroupsDisplay() {
-        if (connectedGroups.length === 0) {
-            connectedGroupsDiv.style.display = 'none';
-            return;
-        }
-        
-        connectedGroupsDiv.style.display = 'block';
-        connectedGroupsListDiv.innerHTML = '';
-        
-        connectedGroups.forEach(group => {
-            const groupDiv = document.createElement('div');
-            groupDiv.className = 'connected-group-item';
-            groupDiv.innerHTML = `
-                <div class="connected-group-info">
-                    <h5>${group.name}</h5>
-                    <p>ID: ${group.id} • Členovia: ${group.members ? group.members.length : 0}</p>
-                </div>
-                <div class="connected-group-actions">
-                    <button class="btn btn-primary" onclick="joinExistingGroup('${group.id}')">Otvoriť</button>
-                    <button class="btn btn-danger" onclick="leaveConnectedGroup('${group.id}')">Odstrániť</button>
-                </div>
-            `;
-            connectedGroupsListDiv.appendChild(groupDiv);
-        });
-    }
-    
-    // Globálne funkcie pre onclick
-    window.joinExistingGroup = async (groupId) => {
-        const group = connectedGroups.find(g => g.id === groupId);
-        if (group) {
-            await showGroup(group);
-        }
-    };
-    
-    window.leaveConnectedGroup = (groupId) => {
-        if (confirm('Naozaj chceš odstrániť túto skupinu zo svojich pripojených skupín?')) {
-            removeFromConnectedGroups(groupId);
-        }
-    };
 
-    // ===== FUNKCIE PRE SKUPINY =====
-    
-    function generateGroupID() {
-        return Math.random().toString(36).substring(2, 8).toUpperCase();
-    }
-    
-    async function createGroup(groupName, username) {
-        console.log('🏗️ Vytváram skupinu:', groupName, 'pre používateľa:', username);
-        console.log('🔍 Firebase DB dostupný:', !!window.firebaseDB);
-        console.log('🔍 Firebase funkcie dostupné:', {
-            collection: !!window.firebaseCollection,
-            addDoc: !!window.firebaseAddDoc
+        // Keď používateľ začne písať, zastav animáciu a prepni na bielu
+        amountInput.addEventListener('input', (e) => {
+            amountInput.classList.add('filled');
+            amountInput.classList.remove('animating');
+            
+            // Sanitizácia: povoliť iba čísla a 1 desatinný oddeľovač
+            let raw = e.target.value.replace(/€/g, '');
+            raw = raw.replace(',', '.');
+            raw = raw.replace(/[^0-9.]/g, '');
+            // povoliť len jednu bodku
+            const parts = raw.split('.');
+            if (parts.length > 2) {
+                raw = parts[0] + '.' + parts.slice(1).join('').replace(/\./g, '');
+            }
+            // nastav späť s €
+            e.target.value = (raw || '') + '€';
+            
+            // Nastav kurzor pred €
+            lockCaret(e.target);
+            
+            // Aktualizuj sumu a prepočítaj
+            handleAmountChange();
         });
-        
-        try {
-            const groupID = generateGroupID();
-            const groupData = {
-                name: groupName,
-                id: groupID,
-                createdAt: new Date(),
-                members: [username] // Pridaj tvorcu ako prvého člena
-            };
+
+        amountInput.addEventListener('focus', (e) => {
+            amountInput.classList.add('filled');
+            amountInput.classList.remove('animating');
             
-            console.log('📝 Ukladám skupinu do databázy:', groupData);
-            
-            if (window.firebaseDB && window.firebaseCollection && window.firebaseAddDoc) {
-                console.log('🔥 Používam Firebase...');
-                // Skutočné ukladanie do Firebase
-                const groupsRef = window.firebaseCollection(window.firebaseDB, 'groups');
-                const docRef = await window.firebaseAddDoc(groupsRef, groupData);
-                console.log('✅ Skupina uložená s ID:', docRef.id);
-                groupData.firebaseId = docRef.id;
-            } else {
-                console.log('⚠️ Firebase nie je dostupný, používam simuláciu...');
-                // Simulácia pre testovanie
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                console.log('✅ Skupina úspešne vytvorená (simulácia)!');
-            }
-            
-            // Pridaj do pripojených skupín
-            addToConnectedGroups(groupData, username);
-            
-            return groupData;
-            
-        } catch (error) {
-            console.error('❌ Chyba pri vytváraní skupiny:', error);
-            console.error('❌ Error details:', {
-                message: error.message,
-                stack: error.stack,
-                firebaseAvailable: !!window.firebaseDB
-            });
-            throw error;
-        }
-    }
-    
-    async function joinGroup(groupID, username) {
-        console.log('🔗 Pripájam sa ku skupine:', groupID, 'ako:', username);
-        
-        try {
-            if (window.firebaseDB) {
-                console.log('🔍 Vyhľadávam skupinu v Firebase...');
-                
-                // Skutočné vyhľadanie v Firebase
-                const groupsRef = window.firebaseCollection(window.firebaseDB, 'groups');
-                const q = window.firebaseQuery(groupsRef, window.firebaseWhere('id', '==', groupID));
-                const querySnapshot = await window.firebaseGetDocs(q);
-                
-                console.log('📊 Počet nájdených skupín:', querySnapshot.size);
-                
-                if (querySnapshot.empty) {
-                    // Skúsme nájsť všetky skupiny pre debug
-                    console.log('🔍 Hľadám všetky skupiny pre debug...');
-                    const allGroupsQuery = await window.firebaseGetDocs(groupsRef);
-                    console.log('📋 Všetky skupiny v databáze:');
-                    allGroupsQuery.forEach((doc, index) => {
-                        const data = doc.data();
-                        console.log(`${index + 1}. ID: "${data.id}", Name: "${data.name}", Firebase ID: ${doc.id}`);
-                    });
-                    
-                    throw new Error(`Skupina s ID "${groupID}" neexistuje. Skontroluj ID a skús znovu.`);
-                }
-                
-                const doc = querySnapshot.docs[0];
-                const groupData = { ...doc.data(), firebaseId: doc.id };
-                
-                // Pridaj používateľa do skupiny ak tam nie je
-                if (!groupData.members.includes(username)) {
-                    groupData.members.push(username);
-                    
-                    // Ulož aktualizovanú skupinu do Firebase
-                    if (window.firebaseUpdateDoc) {
-                        const groupRef = window.firebaseDoc(window.firebaseDB, 'groups', doc.id);
-                        await window.firebaseUpdateDoc(groupRef, {
-                            members: groupData.members
-                        });
-                        console.log('✅ Používateľ pridaný do skupiny v Firebase');
-                    }
-                }
-                
-                console.log('✅ Skupina nájdená:', groupData);
-                
-                // Pridaj do pripojených skupín
-                addToConnectedGroups(groupData, username);
-                
-                return groupData;
-            } else {
-                // Simulácia pre testovanie
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                const groupData = {
-                    name: `Skupina ${groupID}`,
-                    id: groupID,
-                    createdAt: new Date(),
-                    members: [username]
-                };
-                console.log('✅ Úspešne pripojený ku skupine (simulácia)!');
-                
-                // Pridaj do pripojených skupín
-                addToConnectedGroups(groupData, username);
-                
-                return groupData;
-            }
-            
-        } catch (error) {
-            console.error('❌ Chyba pri pripájaní ku skupine:', error);
-            throw error;
-        }
-    }
-    
-    async function showGroup(groupData) {
-        console.log('👥 Zobrazujem skupinu:', groupData);
-        console.log('🔍 currentGroupDiv:', currentGroupDiv);
-        console.log('🔍 groupNameSpan:', groupNameSpan);
-        console.log('🔍 groupIDSpan:', groupIDSpan);
-        
-        currentGroup = groupData;
-        groupMembers = groupData.members || [];
-        groupExpenses = groupData.expenses || [];
-        
-        // Načítať najnovšie dáta z Firebase
-        if (window.firebaseDB && groupData.firebaseId) {
-            try {
-                console.log('🔄 Načítavam najnovšie dáta z Firebase...');
-                const groupRef = window.firebaseDoc(window.firebaseDB, 'groups', groupData.firebaseId);
-                const groupSnap = await window.firebaseGetDoc(groupRef);
-                
-                if (groupSnap.exists()) {
-                    const latestData = groupSnap.data();
-                    groupMembers = latestData.members || [];
-                    groupExpenses = latestData.expenses || [];
-                    console.log('✅ Najnovšie dáta načítané:', { members: groupMembers, expenses: groupExpenses });
-                }
-            } catch (error) {
-                console.error('❌ Chyba pri načítavaní dát z Firebase:', error);
-            }
-        }
-        
-        if (groupNameSpan) {
-            groupNameSpan.textContent = groupData.name;
-        } else {
-            console.error('❌ groupNameSpan nenájdený!');
-        }
-        
-        if (groupIDSpan) {
-            groupIDSpan.textContent = `ID: ${groupData.id}`;
-        } else {
-            console.error('❌ groupIDSpan nenájdený!');
-        }
-        
-        updateMembersDisplay();
-        updateExpensesDisplay();
-        updateExpensesSummary();
-        
-        // Zobraz len skupinové sekcie, nie starú expenses stránku
-        if (currentGroupDiv) {
-            currentGroupDiv.style.display = 'block';
-            console.log('✅ currentGroupDiv zobrazený');
-        } else {
-            console.error('❌ currentGroupDiv nenájdený!');
-        }
-        
-        if (expensesCard) {
-            expensesCard.style.display = 'none'; // Skryj starú stránku
-        }
-        
-        if (groupsCard) {
-            groupsCard.style.display = 'none';
-        }
-        
-        // Zobraz aj pripojené skupiny
-        if (connectedGroupsDiv) {
-            connectedGroupsDiv.style.display = 'block';
-        }
-    }
-    
-    function updateMembersDisplay() {
-        console.log('👥 Aktualizujem zobrazenie členov:', groupMembers);
-        console.log('🔍 memberCountSpan:', memberCountSpan);
-        console.log('🔍 membersListDiv:', membersListDiv);
-        
-        if (memberCountSpan) {
-            memberCountSpan.textContent = groupMembers.length;
-        } else {
-            console.error('❌ memberCountSpan nenájdený!');
-        }
-        
-        if (membersListDiv) {
-            membersListDiv.innerHTML = '';
-            groupMembers.forEach((member, index) => {
-                const memberDiv = document.createElement('div');
-                memberDiv.className = 'member-item';
-                
-                // Zvýrazniť aktuálneho používateľa
-                if (member === currentUsername) {
-                    memberDiv.classList.add('current-user');
-                }
-                
-                memberDiv.innerHTML = `
-                    <span>${member}</span>
-                    <button class="remove-member" data-index="${index}">×</button>
-                `;
-                membersListDiv.appendChild(memberDiv);
-            });
-            console.log('✅ Členovia zobrazení');
-        } else {
-            console.error('❌ membersListDiv nenájdený!');
-        }
-    }
-    
-    async function addMember(memberName) {
-        if (!memberName.trim()) return;
-        
-        console.log('👤 Pridávam člena:', memberName);
-        groupMembers.push(memberName.trim());
-        
-        // Uložiť do Firebase
-        if (window.firebaseDB && currentGroup.firebaseId) {
-            try {
-                const groupRef = window.firebaseDoc(window.firebaseDB, 'groups', currentGroup.firebaseId);
-                await window.firebaseUpdateDoc(groupRef, {
-                    members: groupMembers
-                });
-                console.log('✅ Člen uložený do Firebase');
-                
-                // Aktualizovať zobrazenie po úspešnom uložení
-                updateMembersDisplay();
-                updateExpensesSummary();
-            } catch (error) {
-                console.error('❌ Chyba pri ukladaní člena:', error);
-                // Aj pri chybe aktualizovať zobrazenie (lokálne)
-                updateMembersDisplay();
-                updateExpensesSummary();
-            }
-        } else {
-            // Ak nie je Firebase, aktualizovať len lokálne
-            updateMembersDisplay();
-            updateExpensesSummary();
-        }
-        
-        newMemberNameInput.value = '';
-    }
-    
-    async function removeMember(index) {
-        console.log('🗑️ Odstraňujem člena:', groupMembers[index]);
-        groupMembers.splice(index, 1);
-        
-        // Uložiť do Firebase
-        if (window.firebaseDB && currentGroup.firebaseId) {
-            try {
-                const groupRef = window.firebaseDoc(window.firebaseDB, 'groups', currentGroup.firebaseId);
-                await window.firebaseUpdateDoc(groupRef, {
-                    members: groupMembers
-                });
-                console.log('✅ Člen odstránený z Firebase');
-                
-                // Aktualizovať zobrazenie po úspešnom uložení
-                updateMembersDisplay();
-                updateExpensesSummary();
-            } catch (error) {
-                console.error('❌ Chyba pri odstraňovaní člena:', error);
-                // Aj pri chybe aktualizovať zobrazenie (lokálne)
-                updateMembersDisplay();
-                updateExpensesSummary();
-            }
-        } else {
-            // Ak nie je Firebase, aktualizovať len lokálne
-            updateMembersDisplay();
-            updateExpensesSummary();
-        }
-    }
-    
-    function updateExpensesDisplay() {
-        console.log('💰 Aktualizujem zobrazenie výdavkov:', groupExpenses);
-        console.log('🔍 expensesListDiv:', expensesListDiv);
-        
-        if (expensesListDiv) {
-            expensesListDiv.innerHTML = '';
-            
-            if (groupExpenses.length === 0) {
-                expensesListDiv.innerHTML = '<p style="text-align: center; color: #4a5568; font-style: italic;">Žiadne výdavky</p>';
-                console.log('✅ Zobrazené "Žiadne výdavky"');
-                return;
-            }
-            
-            groupExpenses.forEach((expense, index) => {
-                const expenseDiv = document.createElement('div');
-                expenseDiv.className = 'expense-item';
-                expenseDiv.innerHTML = `
-                    <div class="expense-info">
-                        <h6>${expense.description}</h6>
-                        <p>Pridal: ${expense.addedBy} • ${new Date(expense.createdAt).toLocaleDateString('sk-SK')}</p>
-                    </div>
-                    <div class="expense-amount">${formatMoney(expense.amount)} €</div>
-                    <div class="expense-actions">
-                        <button class="btn btn-danger" onclick="removeExpense(${index})">Odstrániť</button>
-                    </div>
-                `;
-                expensesListDiv.appendChild(expenseDiv);
-            });
-            console.log('✅ Výdavky zobrazené');
-        } else {
-            console.error('❌ expensesListDiv nenájdený!');
-        }
-    }
-    
-    function updateExpensesSummary() {
-        console.log('📊 Aktualizujem summary výdavkov');
-        
-        const totalExpenses = calculateTotalExpenses();
-        const perPersonAmount = calculatePerPersonAmount();
-        
-        if (totalExpensesSpan) {
-            totalExpensesSpan.textContent = `${formatMoney(totalExpenses)} €`;
-        }
-        
-        if (perPersonAmountSpan) {
-            perPersonAmountSpan.textContent = `${formatMoney(perPersonAmount)} €`;
-        }
-        
-        console.log('✅ Summary aktualizované:', { total: totalExpenses, perPerson: perPersonAmount });
-    }
-    
-    async function addExpense(description, amount) {
-        if (!description.trim() || !amount || amount <= 0) return;
-        
-        console.log('💰 Pridávam výdavok:', description, amount);
-        
-        const expense = {
-            description: description.trim(),
-            amount: parseFloat(amount),
-            addedBy: currentUsername,
-            createdAt: new Date()
-        };
-        
-        groupExpenses.push(expense);
-        
-        // Uložiť do Firebase
-        if (window.firebaseDB && currentGroup.firebaseId) {
-            try {
-                const groupRef = window.firebaseDoc(window.firebaseDB, 'groups', currentGroup.firebaseId);
-                await window.firebaseUpdateDoc(groupRef, {
-                    expenses: groupExpenses
-                });
-                console.log('✅ Výdavok uložený do Firebase');
-                
-                // Aktualizovať zobrazenie po úspešnom uložení
-                updateExpensesDisplay();
-                updateExpensesSummary();
-            } catch (error) {
-                console.error('❌ Chyba pri ukladaní výdavku:', error);
-                // Aj pri chybe aktualizovať zobrazenie (lokálne)
-                updateExpensesDisplay();
-                updateExpensesSummary();
-            }
-        } else {
-            // Ak nie je Firebase, aktualizovať len lokálne
-            updateExpensesDisplay();
-            updateExpensesSummary();
-        }
-        
-        expenseDescriptionInput.value = '';
-        expenseAmountInput.value = '';
-    }
-    
-    async function removeExpense(index) {
-        if (confirm('Naozaj chceš odstrániť tento výdavok?')) {
-            console.log('🗑️ Odstraňujem výdavok:', groupExpenses[index]);
-            groupExpenses.splice(index, 1);
-            
-            // Uložiť do Firebase
-            if (window.firebaseDB && currentGroup.firebaseId) {
-                try {
-                    const groupRef = window.firebaseDoc(window.firebaseDB, 'groups', currentGroup.firebaseId);
-                    await window.firebaseUpdateDoc(groupRef, {
-                        expenses: groupExpenses
-                    });
-                    console.log('✅ Výdavok odstránený z Firebase');
-                    
-                    // Aktualizovať zobrazenie po úspešnom uložení
-                    updateExpensesDisplay();
-                    updateExpensesSummary();
-                } catch (error) {
-                    console.error('❌ Chyba pri odstraňovaní výdavku:', error);
-                    // Aj pri chybe aktualizovať zobrazenie (lokálne)
-                    updateExpensesDisplay();
-                    updateExpensesSummary();
-                }
-            } else {
-                // Ak nie je Firebase, aktualizovať len lokálne
-                updateExpensesDisplay();
-                updateExpensesSummary();
-            }
-        }
-    }
-    
-    // Pomocné funkcie
-    function formatMoney(amount) {
-        return parseFloat(amount).toFixed(2);
-    }
-    
-    function calculateTotalExpenses() {
-        return groupExpenses.reduce((total, expense) => total + parseFloat(expense.amount), 0);
-    }
-    
-    function calculatePerPersonAmount() {
-        const total = calculateTotalExpenses();
-        const memberCount = groupMembers.length;
-        return memberCount > 0 ? total / memberCount : 0;
-    }
-    
-    
-    function openPaymeLink() {
-        const totalExpenses = calculateTotalExpenses();
-        const perPersonAmount = calculatePerPersonAmount();
-        
-        if (totalExpenses === 0) {
-            alert('V skupine nie sú žiadne výdavky na rozdelenie.');
+            // Nastav kurzor pred €
+            lockCaret(e.target);
+        });
+
+        // Validácia kláves: len čísla, jeden oddeľovač, blokuj mazanie €
+        amountInput.addEventListener('keydown', (e) => {
+            const value = e.target.value;
+            const cursorPos = e.target.selectionStart;
+            const len = value.length;
+
+            // caret nikdy za €
+            if (cursorPos === len) lockCaret(e.target);
+
+            // Povolené navigačné
+            if (['Tab','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) {
+                // Ak by šiel za €, vráť späť
+                setTimeout(() => lockCaret(e.target), 0);
             return;
         }
         
-        if (groupMembers.length === 0) {
-            alert('V skupine nie sú žiadni členovia.');
-            return;
-        }
-        
-        const paymeUrl = createPaymeUrl({
-            iban: 'SK2111000000002932830628',
-            amount: perPersonAmount.toFixed(2),
-            currency: 'EUR',
-            message: 'GroupPocket'
-        });
-        
-        console.log('💰 Payme URL:', paymeUrl);
-        window.open(paymeUrl, '_blank');
-    }
-    
-    // Globálne funkcie pre onclick
-    window.removeExpense = removeExpense;
-    
-    function hideGroup() {
-        console.log('👋 Opúšťam skupinu');
-        currentGroup = null;
-        
-        if (currentGroupDiv) {
-            currentGroupDiv.style.display = 'none';
-        }
-        if (expensesCard) {
-            expensesCard.style.display = 'none';
-        }
-        if (groupsCard) {
-            groupsCard.style.display = 'block';
-        }
-        if (connectedGroupsDiv) {
-            connectedGroupsDiv.style.display = 'none';
-        }
-    }
-    
-    function showSplitExpenses() {
-        console.log('💰 Zobrazujem rozdelenie výdavkov');
-        
-        // Skryj skupinové sekcie a zobraz expenses stránku
-        if (currentGroupDiv) {
-            currentGroupDiv.style.display = 'none';
-        }
-        if (expensesCard) {
-            expensesCard.style.display = 'block';
-        }
-        if (groupsCard) {
-            groupsCard.style.display = 'none';
-        }
-        if (connectedGroupsDiv) {
-            connectedGroupsDiv.style.display = 'none';
-        }
-    }
-    
-    function backToGroup() {
-        console.log('🔙 Vraciam sa ku skupine');
-        
-        // Skryj expenses stránku a zobraz skupinové sekcie
-        if (currentGroupDiv) {
-            currentGroupDiv.style.display = 'block';
-        }
-        if (expensesCard) {
-            expensesCard.style.display = 'none';
-        }
-        if (groupsCard) {
-            groupsCard.style.display = 'none';
-        }
-        if (connectedGroupsDiv) {
-            connectedGroupsDiv.style.display = 'block';
-        }
-    }
-    
-    function showModal(modal) {
-        modal.style.display = 'flex';
-    }
-    
-    function hideModal(modal) {
-        modal.style.display = 'none';
-    }
-    
-    async function listAllGroups() {
-        console.log('📋 Zobrazujem všetky skupiny...');
-        
-        try {
-            if (window.firebaseDB) {
-                const groupsRef = window.firebaseCollection(window.firebaseDB, 'groups');
-                const querySnapshot = await window.firebaseGetDocs(groupsRef);
-                
-                console.log('📊 Počet skupín v databáze:', querySnapshot.size);
-                
-                if (querySnapshot.empty) {
-                    alert('V databáze nie sú žiadne skupiny.');
+            // Backspace: povoliť, pokiaľ nie sme priamo za začiatkom a nemažeme €
+            if (e.key === 'Backspace') {
+                if (cursorPos <= 0) return; // nič
+                // na pozícii pred € je OK, nemaže znak €
+                return; // povolené
+            }
+
+            // Delete: ak by mazal €, zablokuj
+            if (e.key === 'Delete') {
+                if (cursorPos >= len - 1) {
+                    e.preventDefault();
+                    return;
+                }
+                return; // inak povolené
+            }
+
+            // Čísla
+            if (/^[0-9]$/.test(e.key)) return;
+            // Desatinný oddeľovač: len jeden
+            if (e.key === '.' || e.key === ',') {
+                if (value.includes('.')) { e.preventDefault(); return; }
+                // nahradíme za bodku počas input eventu
                     return;
                 }
                 
-                let groupsList = 'Všetky skupiny v databáze:\n\n';
-                querySnapshot.forEach((doc, index) => {
-                    const data = doc.data();
-                    groupsList += `${index + 1}. Názov: "${data.name}"\n`;
-                    groupsList += `   ID: "${data.id}"\n`;
-                    groupsList += `   Členovia: ${data.members ? data.members.length : 0}\n`;
-                    groupsList += `   Firebase ID: ${doc.id}\n\n`;
-                });
-                
-                alert(groupsList);
+            // Iné znaky zamietni
+            e.preventDefault();
+        });
+
+        // Po kliknutí alebo uvoľnení myši uzamkni caret pred €
+        amountInput.addEventListener('click', (e) => lockCaret(e.target));
+        amountInput.addEventListener('mouseup', (e) => {
+            setTimeout(() => lockCaret(e.target), 0);
+        });
+        amountInput.addEventListener('keyup', (e) => lockCaret(e.target));
+        amountInput.addEventListener('select', (e) => lockCaret(e.target));
+    }
+}
+
+function initializePocketsPage() {
+    console.log('👛 Inicializujem Pockets stránku');
+    
+    // Event listener pre pridanie nového pocketu
+    const addPocketButton = document.querySelector('.add-pocket-button');
+    
+    if (addPocketButton) {
+        addPocketButton.addEventListener('click', () => {
+            console.log('➕ Klik na pridanie pocketu');
+            // TODO: Implementovať pridanie pocketu
+            alert('Funkcia pridania pocketu bude implementovaná v ďalšej verzii');
+        });
+    }
+    
+    // Event listenery pre pocket karty
+    const pocketCards = document.querySelectorAll('.pocket-card');
+    pocketCards.forEach(card => {
+        card.addEventListener('click', () => {
+            console.log('👛 Klik na pocket kartu');
+            // TODO: Implementovať otvorenie pocketu
+            alert('Funkcia otvorenia pocketu bude implementovaná v ďalšej verzii');
+        });
+    });
+}
+
+function initializeAccountPage() {
+    console.log('👤 Inicializujem Account stránku');
+    
+    // Event listenery pre edit tlačidlá
+    const editButtons = document.querySelectorAll('.edit-button');
+    editButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            console.log('✏️ Klik na edit');
+            // TODO: Implementovať edit
+            alert('Funkcia editovania bude implementovaná v ďalšej verzii');
+        });
+    });
+    
+    // Event listener pre toggle switch
+    const toggleSwitch = document.querySelector('.toggle-switch');
+    if (toggleSwitch) {
+        toggleSwitch.addEventListener('click', () => {
+            console.log('🔄 Klik na toggle switch');
+            toggleSwitch.classList.toggle('active');
+        });
+    }
+    
+    // Event listenery pre other sekciu
+    const otherItems = document.querySelectorAll('.other-item');
+    otherItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const text = item.querySelector('.other-text').textContent;
+            console.log('🔧 Klik na:', text);
+            
+            if (text.includes('Odhlásiť sa')) {
+                if (confirm('Naozaj sa chceš odhlásiť?')) {
+                    alert('Funkcia odhlásenia bude implementovaná v ďalšej verzii');
+                }
+            } else if (text.includes('Zmazať účet')) {
+                if (confirm('Naozaj chceš zmazať účet? Táto akcia je nevratná!')) {
+                    alert('Funkcia mazania účtu bude implementovaná v ďalšej verzii');
+                }
             } else {
-                alert('Firebase nie je dostupný.');
+                alert('Funkcia bude implementovaná v ďalšej verzii');
             }
-        } catch (error) {
-            console.error('❌ Chyba pri zobrazovaní skupín:', error);
-            alert('Chyba pri načítavaní skupín: ' + error.message);
-        }
-    }
-
-    function formatMoney(value) {
-        const num = Number(value);
-        if (!isFinite(num)) return '0.00';
-        return num.toFixed(2);
-    }
-
-    function createPaymeUrl({ iban, amount, currency, message, vs }) {
-        console.log('🔗 Vytváram Payme URL s parametrami:', { iban, amount, currency, message, vs });
-        
-        // Jednoduchý formát URL pre Payme.sk - len základné parametre
-        const params = new URLSearchParams();
-        params.set('V', '1');
-        params.set('IBAN', iban || 'SK2111000000002932830628');
-        params.set('AM', amount || '0.00');
-        params.set('CC', currency || 'EUR');
-        params.set('MSG', message || 'GroupPocket');
-        
-        const url = `https://payme.sk/?${params.toString()}`;
-        console.log('🔗 Vygenerovaný Payme URL:', url);
-        return url;
-    }
-
-    function renderButtons(peopleCount, perPersonAmount) {
-        console.log('🎯 Renderujem tlačidlá pre', peopleCount, 'ľudí, suma na osobu:', perPersonAmount);
-        
-        paymentButtons.innerHTML = '';
-
-        const heading = document.createElement('h4');
-        heading.textContent = 'Zaplaťte svoj podiel:';
-        paymentButtons.appendChild(heading);
-
-        for (let i = 1; i <= peopleCount; i++) {
-            console.log(`🔘 Vytváram tlačidlo #${i}`);
-            
-            const a = document.createElement('a');
-            a.className = 'btn btn-payment';
-            a.textContent = `Zaplatiť podiel #${i}`;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-
-            const url = createPaymeUrl({
-                iban: DEFAULT_IBAN,
-                amount: formatMoney(perPersonAmount),
-                currency: CURRENCY,
-                message: 'GroupPocket'
-            });
-
-            a.href = url;
-            paymentButtons.appendChild(a);
-            console.log(`✅ Tlačidlo #${i} pridané s URL:`, url);
-        }
-        
-        console.log('🎯 Všetky tlačidlá vyrenderované!');
-    }
-
-    form.addEventListener('submit', (e) => {
-        console.log('📝 Formulár odoslaný!');
-        e.preventDefault();
-
-        const amountInput = document.getElementById('amount');
-        const peopleInput = document.getElementById('people');
-
-        console.log('📊 Hodnoty z formulára:');
-        console.log('- Suma:', amountInput.value);
-        console.log('- Počet ľudí:', peopleInput.value);
-
-        const total = Number(amountInput.value);
-        const people = Math.max(2, Math.min(20, Number(peopleInput.value)));
-
-        console.log('🧮 Vypočítané hodnoty:');
-        console.log('- Total:', total);
-        console.log('- People:', people);
-
-        if (!isFinite(total) || total <= 0 || !isFinite(people) || people < 2) {
-            console.log('❌ Neplatné hodnoty, ukončujem');
-            return;
-        }
-
-        const perPerson = total / people;
-        console.log('💰 Suma na osobu:', perPerson);
-
-        totalAmountEl.textContent = `${formatMoney(total)} €`;
-        perPersonEl.textContent = `${formatMoney(perPerson)} €`;
-
-        console.log('🎨 Aktualizujem zobrazenie výsledkov...');
-        renderButtons(people, perPerson);
-
-        resultSection.style.display = 'block';
-        resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        
-        console.log('✅ Aplikácia dokončená!');
+        });
     });
+}
 
-    // ===== EVENT LISTENERY PRE SKUPINY =====
-    
-    // Vytvoriť skupinu
-    createGroupBtn.addEventListener('click', () => {
-        console.log('🏗️ Klik na vytvoriť skupinu');
-        showModal(createGroupModal);
-    });
-    
-    // Pripájať sa ku skupine
-    joinGroupBtn.addEventListener('click', () => {
-        console.log('🔗 Klik na pripájať sa ku skupine');
-        showModal(joinGroupModal);
-    });
-    
-    // Zobraziť všetky skupiny
-    if (listGroupsBtn) {
-        listGroupsBtn.addEventListener('click', () => {
-            console.log('📋 Klik na zobraziť všetky skupiny');
-            listAllGroups();
-        });
+// ===== POMOCNÉ FUNKCIE =====
+
+function formatMoney(amount) {
+    const num = Number(amount);
+    if (!isFinite(num)) return '0.00';
+    return num.toFixed(2);
+}
+
+function showNotification(message, type = 'info') {
+    console.log(`📢 Notifikácia (${type}):`, message);
+    // TODO: Implementovať notifikácie
+}
+
+// ===== RESPONSIVE DESIGN =====
+
+function handleResize() {
+    const container = document.querySelector('.container');
+    if (window.innerWidth < 375) {
+        container.style.maxWidth = '100%';
+    } else {
+        container.style.maxWidth = '375px';
     }
-    
-    // Rozdeliť výdavky - odstránené z HTML
-    // splitExpensesBtn.addEventListener('click', () => {
-    //     console.log('💰 Klik na rozdeliť výdavky');
-    //     showSplitExpenses();
-    // });
-    
-    // Späť ku skupine
-    if (backToGroupBtn) {
-        backToGroupBtn.addEventListener('click', () => {
-            console.log('🔙 Klik na späť ku skupine');
-            backToGroup();
-        });
-    }
-    
-    // Obnoviť skupinu
-    if (refreshGroupBtn) {
-        refreshGroupBtn.addEventListener('click', async () => {
-            console.log('🔄 Klik na obnoviť skupinu');
-            if (currentGroup) {
-                await showGroup(currentGroup);
-            }
-        });
-    }
-    
-    // Vyplatiť (Payme)
-    if (payMeBtn) {
-        payMeBtn.addEventListener('click', () => {
-            console.log('💰 Klik na vyplatiť');
-            openPaymeLink();
-        });
-    }
-    
-    // Pridať člena
-    if (addMemberBtn) {
-        addMemberBtn.addEventListener('click', () => {
-            const memberName = newMemberNameInput.value.trim();
-            if (memberName) {
-                addMember(memberName);
-                newMemberNameInput.value = '';
-            }
-        });
-    }
-    
-    // Pridať výdavok
-    if (addExpenseBtn) {
-        addExpenseBtn.addEventListener('click', () => {
-            const description = expenseDescriptionInput.value.trim();
-            const amount = parseFloat(expenseAmountInput.value);
-            if (description && amount > 0) {
-                addExpense(description, amount);
-                expenseDescriptionInput.value = '';
-                expenseAmountInput.value = '';
-            }
-        });
-    }
-    
-    // Event listener pre odstraňovanie členov (delegovaný)
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('remove-member')) {
-            const index = parseInt(e.target.getAttribute('data-index'));
-            removeMember(index);
-        }
-    });
-    
-    // Enter kláves pre pridávanie členov
-    if (newMemberNameInput) {
-        newMemberNameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const memberName = newMemberNameInput.value.trim();
-                if (memberName) {
-                    addMember(memberName);
-                    newMemberNameInput.value = '';
-                }
-            }
-        });
-    }
-    
-    // Enter kláves pre pridávanie výdavkov
-    if (expenseDescriptionInput) {
-        expenseDescriptionInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const description = expenseDescriptionInput.value.trim();
-                const amount = parseFloat(expenseAmountInput.value);
-                if (description && amount > 0) {
-                    addExpense(description, amount);
-                    expenseDescriptionInput.value = '';
-                    expenseAmountInput.value = '';
-                }
-            }
-        });
-    }
-    
-    if (expenseAmountInput) {
-        expenseAmountInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const description = expenseDescriptionInput.value.trim();
-                const amount = parseFloat(expenseAmountInput.value);
-                if (description && amount > 0) {
-                    addExpense(description, amount);
-                    expenseDescriptionInput.value = '';
-                    expenseAmountInput.value = '';
-                }
-            }
-        });
-    }
-    
-    // Opustiť skupinu
-    if (leaveGroupBtn) {
-        leaveGroupBtn.addEventListener('click', () => {
-            console.log('👋 Klik na opustiť skupinu');
-            hideGroup();
-        });
-    }
-    
-    // Zrušiť vytvorenie skupiny
-    if (cancelCreateGroup) {
-        cancelCreateGroup.addEventListener('click', () => {
-            console.log('❌ Zrušenie vytvorenia skupiny');
-            hideModal(createGroupModal);
-            createGroupForm.reset();
-        });
-    }
-    
-    // Zrušiť pripájanie sa ku skupine
-    if (cancelJoinGroup) {
-        cancelJoinGroup.addEventListener('click', () => {
-            console.log('❌ Zrušenie pripájania sa ku skupine');
-            hideModal(joinGroupModal);
-            joinGroupForm.reset();
-        });
-    }
-    
-    // Submit vytvorenia skupiny
-    if (createGroupForm) {
-        createGroupForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        console.log('📝 Submit vytvorenia skupiny');
-        
-        const groupNameInput = document.getElementById('groupNameInput');
-        const usernameInput = document.getElementById('createUsernameInput');
-        const groupName = groupNameInput.value.trim();
-        const username = usernameInput.value.trim();
-        
-        if (!groupName) {
-            alert('Zadajte názov skupiny!');
-            return;
-        }
-        
-        if (!username) {
-            alert('Zadajte svoju prezívku!');
-            return;
-        }
-        
-        currentUsername = username;
-        saveToSession();
-        
-        try {
-            const groupData = await createGroup(groupName, username);
-            hideModal(createGroupModal);
-            createGroupForm.reset();
-            await showGroup(groupData);
-        } catch (error) {
-            console.error('❌ Chyba v createGroupForm:', error);
-            alert('Chyba pri vytváraní skupiny: ' + error.message);
-        }
-        });
-    }
-    
-    // Submit pripájania sa ku skupine
-    if (joinGroupForm) {
-        joinGroupForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        console.log('📝 Submit pripájania sa ku skupine');
-        
-        const groupIDInput = document.getElementById('groupIDInput');
-        const usernameInput = document.getElementById('joinUsernameInput');
-        const groupID = groupIDInput.value.trim().toUpperCase();
-        const username = usernameInput.value.trim();
-        
-        if (!groupID) {
-            alert('Zadajte ID skupiny!');
-            return;
-        }
-        
-        if (!username) {
-            alert('Zadajte svoju prezívku!');
-            return;
-        }
-        
-        currentUsername = username;
-        saveToSession();
-        
-        try {
-            const groupData = await joinGroup(groupID, username);
-            hideModal(joinGroupModal);
-            joinGroupForm.reset();
-            await showGroup(groupData);
-        } catch (error) {
-            alert('Chyba pri pripájaní ku skupine: ' + error.message);
-        }
-        });
-    }
-    
-    // Zavrieť modálne okná kliknutím mimo ne
-    if (createGroupModal) {
-        createGroupModal.addEventListener('click', (e) => {
-            if (e.target === createGroupModal) {
-                hideModal(createGroupModal);
-                createGroupForm.reset();
-            }
-        });
-    }
-    
-    if (joinGroupModal) {
-        joinGroupModal.addEventListener('click', (e) => {
-            if (e.target === joinGroupModal) {
-                hideModal(joinGroupModal);
-                joinGroupForm.reset();
-            }
-        });
-    }
-    
-    // Duplicitné event listenery odstránené - už sú pridané vyššie
-    
-    expenseAmountInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const description = expenseDescriptionInput.value.trim();
-            const amount = parseFloat(expenseAmountInput.value);
-            
-            if (description && amount > 0) {
-                addExpense(description, amount);
-            }
-        }
-    });
-    
-    // Načítaj session storage pri štarte
-    loadFromSession();
-    
-    console.log('🎯 Všetky event listenery nastavené!');
+}
+
+window.addEventListener('resize', handleResize);
+handleResize(); // Inicializácia
+
+// ===== TOUCH EVENTS PRE MOBILNÉ ZARIADENIA =====
+
+let touchStartX = 0;
+let touchEndX = 0;
+let isAnimating = false;
+
+document.addEventListener('touchstart', (e) => {
+    if (isAnimating) return;
+    touchStartX = e.changedTouches[0].screenX;
 });
 
+document.addEventListener('touchend', (e) => {
+    if (isAnimating) return;
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+});
 
+function handleSwipe() {
+    const swipeThreshold = 50;
+    const swipeDistance = touchEndX - touchStartX;
+    
+    if (Math.abs(swipeDistance) > swipeThreshold) {
+        isAnimating = true;
+        
+        if (swipeDistance > 0) {
+            // Swipe doprava - predchádzajúca stránka
+            switchToPreviousPage();
+        } else {
+            // Swipe doľava - ďalšia stránka
+            switchToNextPage();
+        }
+        
+        // Resetuj animačný flag po dokončení animácie
+        setTimeout(() => {
+            isAnimating = false;
+        }, 300);
+    }
+}
 
+function switchToPreviousPage() {
+    const pages = ['quick-split', 'pockets', 'account'];
+    const currentIndex = pages.indexOf(currentPage);
+    const previousIndex = currentIndex > 0 ? currentIndex - 1 : pages.length - 1;
+    switchToPage(pages[previousIndex]);
+}
+
+function switchToNextPage() {
+    const pages = ['quick-split', 'pockets', 'account'];
+    const currentIndex = pages.indexOf(currentPage);
+    const nextIndex = currentIndex < pages.length - 1 ? currentIndex + 1 : 0;
+    switchToPage(pages[nextIndex]);
+}
+
+// ===== QUICKSPLIT FUNKCIE =====
+
+function initializeParticipants() {
+    console.log('👥 Inicializujem účastníkov');
+    updateParticipantsDisplay();
+}
+
+function initializePayer() {
+    console.log('👤 Inicializujem platiča');
+    updatePayerDisplay();
+}
+
+function updateParticipantsDisplay() {
+    const participantsCard = document.querySelector('.participants-card');
+    if (!participantsCard) return;
+    
+    // Aktualizuj zobrazenie účastníkov
+    const participantItems = participantsCard.querySelectorAll('.participant-item');
+    participantItems.forEach((item, index) => {
+        if (quickSplitData.participants[index]) {
+            const participant = quickSplitData.participants[index];
+            const nameSpan = item.querySelector('.participant-name');
+            const checkIcon = item.querySelector('.participant-check');
+            const unselectedDiv = item.querySelector('.participant-unselected');
+            const amountSpan = item.querySelector('.participant-amount');
+            
+            if (nameSpan) nameSpan.textContent = participant.name;
+            if (amountSpan) amountSpan.textContent = formatMoney(participant.amount) + ' €';
+            
+            if (participant.selected) {
+                if (checkIcon) checkIcon.style.display = 'block';
+                if (unselectedDiv) unselectedDiv.style.display = 'none';
+            } else {
+                if (checkIcon) checkIcon.style.display = 'none';
+                if (unselectedDiv) unselectedDiv.style.display = 'block';
+            }
+        }
+    });
+    
+    // Aktualizuj súčet
+    updateSplitSum();
+}
+
+function updatePayerDisplay() {
+    const payerField = document.querySelector('.payer-field span');
+    if (payerField) {
+        payerField.textContent = quickSplitData.payer;
+    }
+}
+
+function updateSplitSum() {
+    const splitSum = document.querySelector('.split-sum');
+    if (splitSum) {
+        const totalAmount = quickSplitData.amount;
+        splitSum.textContent = `sumu ${formatMoney(totalAmount)} €`;
+    }
+}
+
+function calculateAmounts() {
+    const selectedParticipants = quickSplitData.participants.filter(p => p.selected);
+    const amountPerPerson = selectedParticipants.length > 0 ? quickSplitData.amount / selectedParticipants.length : 0;
+    
+    quickSplitData.participants.forEach(participant => {
+        participant.amount = participant.selected ? amountPerPerson : 0;
+    });
+    
+    updateParticipantsDisplay();
+}
+
+function showParticipantsModal() {
+    const modal = createModal('Upraviť účastníkov', `
+        <div class="participants-modal-content">
+            <div class="add-participant">
+                <input type="text" id="newParticipantName" placeholder="Meno účastníka" class="participant-input">
+                <button id="addParticipantBtn" class="add-participant-btn">Pridať</button>
+            </div>
+            <div class="participants-list">
+                ${quickSplitData.participants.map((participant, index) => `
+                    <div class="participant-modal-item">
+                        <label class="participant-checkbox">
+                            <input type="checkbox" ${participant.selected ? 'checked' : ''} data-index="${index}">
+                            <span>${participant.name}</span>
+                        </label>
+                        <button class="remove-participant-btn" data-index="${index}">×</button>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `);
+    
+    // Event listenery pre modal
+    const addBtn = modal.querySelector('#addParticipantBtn');
+    const nameInput = modal.querySelector('#newParticipantName');
+    const checkboxes = modal.querySelectorAll('input[type="checkbox"]');
+    const removeBtns = modal.querySelectorAll('.remove-participant-btn');
+    
+    addBtn.addEventListener('click', () => {
+        const name = nameInput.value.trim();
+        if (name) {
+            quickSplitData.participants.push({ name, selected: true, amount: 0 });
+            nameInput.value = '';
+            closeModal();
+            showParticipantsModal(); // Znovu otvor modal s aktualizovaným zoznamom
+        }
+    });
+    
+    nameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addBtn.click();
+        }
+    });
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            quickSplitData.participants[index].selected = e.target.checked;
+            calculateAmounts();
+        });
+    });
+    
+    removeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            if (quickSplitData.participants.length > 1) {
+                quickSplitData.participants.splice(index, 1);
+                closeModal();
+                showParticipantsModal();
+            }
+        });
+    });
+}
+
+function showPayerModal() {
+    const modal = createModal('Kto platil?', `
+        <div class="payer-modal-content">
+            ${quickSplitData.participants.map((participant, index) => `
+                <div class="payer-option ${participant.name === quickSplitData.payer ? 'selected' : ''}" data-name="${participant.name}">
+                    ${participant.name}
+                </div>
+            `).join('')}
+        </div>
+    `);
+    
+    const payerOptions = modal.querySelectorAll('.payer-option');
+    payerOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            quickSplitData.payer = option.dataset.name;
+            closeModal();
+            updatePayerDisplay();
+        });
+    });
+}
+
+function showSplitItemsModal() {
+    const modal = createModal('Rozdeliť na položky', `
+        <div class="split-items-modal-content">
+            <div class="add-item">
+                <input type="text" id="itemName" placeholder="Názov položky" class="item-input">
+                <input type="number" id="itemAmount" placeholder="Suma" step="0.01" class="amount-input">
+                <button id="addItemBtn" class="add-item-btn">Pridať</button>
+            </div>
+            <div class="items-list">
+                ${quickSplitData.splitItems.map((item, index) => `
+                    <div class="item-modal-item">
+                        <span class="item-name">${item.name}</span>
+                        <span class="item-amount">${formatMoney(item.amount)} €</span>
+                        <button class="remove-item-btn" data-index="${index}">×</button>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="total-items">
+                <strong>Celkom: ${formatMoney(quickSplitData.splitItems.reduce((sum, item) => sum + item.amount, 0))} €</strong>
+            </div>
+        </div>
+    `);
+    
+    const addBtn = modal.querySelector('#addItemBtn');
+    const nameInput = modal.querySelector('#itemName');
+    const amountInput = modal.querySelector('#itemAmount');
+    const removeBtns = modal.querySelectorAll('.remove-item-btn');
+    
+    addBtn.addEventListener('click', () => {
+        const name = nameInput.value.trim();
+        const amount = parseFloat(amountInput.value);
+        if (name && amount > 0) {
+            quickSplitData.splitItems.push({ name, amount });
+            nameInput.value = '';
+            amountInput.value = '';
+            closeModal();
+            showSplitItemsModal();
+        }
+    });
+    
+    removeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            quickSplitData.splitItems.splice(index, 1);
+            closeModal();
+            showSplitItemsModal();
+        });
+    });
+}
+
+function handlePayment() {
+    const selectedParticipants = quickSplitData.participants.filter(p => p.selected);
+    if (selectedParticipants.length === 0) {
+        showNotification('Vyberte aspoň jedného účastníka', 'error');
+        return;
+    }
+    
+    if (quickSplitData.amount <= 0) {
+        showNotification('Zadajte sumu väčšiu ako 0', 'error');
+        return;
+    }
+    
+    // Generuj PayMe linky pre každého účastníka
+    const paymentLinks = selectedParticipants.map(participant => {
+        const paymeLink = generatePayMeLink(participant.amount, participant.name);
+        return {
+            name: participant.name,
+            amount: participant.amount,
+            link: paymeLink
+        };
+    });
+    
+    showPaymentModal(paymentLinks);
+}
+
+function handleShare() {
+    const selectedParticipants = quickSplitData.participants.filter(p => p.selected);
+    if (selectedParticipants.length === 0) {
+        showNotification('Vyberte aspoň jedného účastníka', 'error');
+        return;
+    }
+    
+    if (quickSplitData.amount <= 0) {
+        showNotification('Zadajte sumu väčšiu ako 0', 'error');
+        return;
+    }
+    
+    // Vytvor zdieľateľný link
+    const shareData = {
+        amount: quickSplitData.amount,
+        participants: selectedParticipants,
+        payer: quickSplitData.payer,
+        timestamp: Date.now()
+    };
+    
+    const shareLink = generateShareLink(shareData);
+    showShareModal(shareLink);
+}
+
+function generatePayMeLink(amount, recipient) {
+    // PayMe link formát
+    const encodedAmount = encodeURIComponent(amount.toFixed(2));
+    const encodedRecipient = encodeURIComponent(recipient);
+    return `https://payme.sk/pay?amount=${encodedAmount}&recipient=${encodedRecipient}`;
+}
+
+function generateShareLink(data) {
+    // Vytvor unikátny ID pre zdieľanie
+    const shareId = Math.random().toString(36).substr(2, 9);
+    
+    // Ulož do Firebase (ak je dostupné)
+    if (window.firebaseDB) {
+        try {
+            const shareRef = window.firebaseCollection(window.firebaseDB, 'shares');
+            window.firebaseAddDoc(shareRef, {
+                id: shareId,
+                data: data,
+                createdAt: new Date()
+            });
+        } catch (error) {
+            console.log('Firebase nie je dostupný, používam lokálne uloženie');
+        }
+    }
+    
+    // Vytvor URL
+    const baseUrl = window.location.origin;
+    return `${baseUrl}?share=${shareId}`;
+}
+
+function showPaymentModal(paymentLinks) {
+    const modal = createModal('Platba', `
+        <div class="payment-modal-content">
+            <h4>Kliknite na tlačidlo pre platbu:</h4>
+            ${paymentLinks.map(link => `
+                <div class="payment-link-item">
+                    <span class="payment-info">${link.name}: ${formatMoney(link.amount)} €</span>
+                    <a href="${link.link}" target="_blank" class="payme-link-btn">Zaplatiť PayMe</a>
+                </div>
+            `).join('')}
+        </div>
+    `);
+}
+
+function showShareModal(shareLink) {
+    const modal = createModal('Zdieľať QuickSplit', `
+        <div class="share-modal-content">
+            <p>Zdieľajte tento link s účastníkmi:</p>
+            <div class="share-link-container">
+                <input type="text" value="${shareLink}" readonly class="share-link-input">
+                <button id="copyLinkBtn" class="copy-link-btn">Kopírovať</button>
+            </div>
+        </div>
+    `);
+    
+    const copyBtn = modal.querySelector('#copyLinkBtn');
+    const linkInput = modal.querySelector('.share-link-input');
+    
+    copyBtn.addEventListener('click', () => {
+        linkInput.select();
+        document.execCommand('copy');
+        showNotification('Link skopírovaný do schránky!', 'success');
+    });
+}
+
+// ===== MODAL FUNKCIE =====
+
+function createModal(title, content) {
+    // Odstráň existujúce modály
+    const existingModals = document.querySelectorAll('.modal');
+    existingModals.forEach(modal => modal.remove());
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>${title}</h3>
+            ${content}
+            <div class="modal-actions">
+                <button class="close-modal-btn">Zavrieť</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Event listener pre zatvorenie
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    closeBtn.addEventListener('click', () => closeModal());
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+    
+    return modal;
+}
+
+function closeModal() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => modal.remove());
+}
+
+function showNotification(message, type = 'info') {
+    console.log(`📢 Notifikácia (${type}):`, message);
+    
+    // Vytvor notifikáciu
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    // Štýly pre notifikáciu
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'error' ? '#EF4444' : type === 'success' ? '#10B981' : '#5E18EA'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideInRight 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Odstráň po 3 sekundách
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease-in';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// ===== AMOUNT INPUT HANDLING =====
+
+function handleAmountChange() {
+    const amountInput = document.getElementById('amountInputAnimated');
+    if (!amountInput) return;
+    
+    const value = amountInput.value.replace('€', '').trim();
+    const amount = parseFloat(value) || 0;
+    
+    quickSplitData.amount = amount;
+    calculateAmounts();
+}
+
+console.log('🎯 GroupPocket V2 Script.js načítaný úspešne!');
+
+// ===== AMOUNT TYPING ANIMATION =====
+
+let amountAnimationInterval;
+function startAmountTypingAnimation() {
+    const input = document.getElementById('amountInputAnimated');
+    if (!input) return;
+
+    const samples = ['30', '60', '120', '12.50'];
+    let idx = 0;
+
+    function typeText(text, onComplete) {
+        input.classList.add('animating');
+        input.classList.remove('filled');
+        input.value = '€'; // € je vždy na konci
+        let i = 0;
+        const speed = 160;
+        const typer = setInterval(() => {
+            input.value = text.slice(0, i + 1) + '€';
+            i++;
+            if (i >= text.length) {
+                clearInterval(typer);
+                setTimeout(() => eraseText(onComplete), 1100);
+            }
+        }, speed);
+    }
+
+    function eraseText(onComplete) {
+        let current = input.value.replace('€', '');
+        const eraser = setInterval(() => {
+            current = current.slice(0, -1);
+            input.value = current + '€';
+            if (current.length === 0) {
+                clearInterval(eraser);
+                if (onComplete) onComplete();
+            }
+        }, 80);
+    }
+
+    function cycle() {
+        if (document.activeElement === input) return; // nepúšťaj pri písaní
+        typeText(samples[idx], () => {
+            idx = (idx + 1) % samples.length;
+            setTimeout(() => { if (document.activeElement !== input) cycle(); }, 400);
+        });
+    }
+
+    // spusti po krátkej pauze
+    setTimeout(cycle, 600);
+}

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GroupPocket - Zdieľanie výdavkov</title>
     <link rel="stylesheet" href="./styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Firebase SDK -->
     <script type="module">
@@ -76,195 +76,235 @@
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1 class="logo">💰 GroupPocket</h1>
-            <p class="subtitle">Jednoduché zdieľanie výdavkov</p>
-        </header>
+        <!-- Navigation tabs -->
+        <div class="nav-tabs">
+            <a href="#" class="nav-tab active" data-page="quick-split">QuickSplit</a>
+            <a href="#" class="nav-tab" data-page="pockets">Pockets</a>
+            <a href="#" class="nav-tab" data-page="account">Account</a>
+        </div>
 
         <main class="main-content">
-            <!-- Skupiny sekcia -->
-            <div class="card" id="groupsCard">
-                <h2 class="card-title">Skupiny</h2>
+            <!-- QuickSplit page -->
+            <div class="page quick-split-page active" id="quick-split-page">
+                <div class="page-inner">
+                <h1 class="page-title">Pridať platbu</h1>
                 
-                <div class="group-actions">
-                    <button id="createGroupBtn" class="btn btn-secondary">
-                        Vytvoriť novú skupinu
-                    </button>
-                    <button id="joinGroupBtn" class="btn btn-secondary">
-                        Pripájať sa ku skupine
-                    </button>
-                    <button id="listGroupsBtn" class="btn btn-secondary">
-                        Zobraziť všetky skupiny
-                    </button>
-                </div>
-                
-                <!-- Pripojené skupiny -->
-                <div id="connectedGroups" class="connected-groups" style="display: none;">
-                    <h3>Moje skupiny</h3>
-                    <div id="connectedGroupsList" class="connected-groups-list">
-                        <!-- Pripojené skupiny sa vygenerujú dynamicky -->
+                <div class="add-payment-section">
+                    <div class="payment-amount">
+                        <input id="amountInputAnimated" class="amount-input animating" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" aria-label="Suma" placeholder="€" />
                     </div>
+                    <div class="split-items-field">
+                        <span>Rozdeliť na položky</span>
+                        <img src="./icons/arrow-right.svg" alt="→" class="arrow-icon" />
+                    </div>
+                </div>
+
+                <div class="split-between-section">
+                    <h2 class="split-between-title">Rozdeliť medzi</h2>
+                    <div class="split-sum">sumu 0 €</div>
+                    
+                    <div class="participants-card">
+                        <div class="participant-item">
+                            <span class="participant-name">Martin (ty)</span>
+                            <img src="./icons/circle-check.svg" alt="✓" class="participant-check" />
+                            <span class="participant-amount">0.00 €</span>
+                        </div>
+                        <div class="participant-item">
+                            <span class="participant-name">Kristína</span>
+                            <img src="./icons/circle-check.svg" alt="✓" class="participant-check" />
+                            <span class="participant-amount">0.00 €</span>
+                        </div>
+                        <div class="participant-item">
+                            <span class="participant-name">Jozef</span>
+                            <div class="participant-unselected"></div>
+                            <span class="participant-amount">0.00 €</span>
+                        </div>
+                        <div class="edit-button">
+                            <span>Upraviť</span>
+                            <img src="./icons/arrow-right.svg" alt="→" class="arrow-icon" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="who-paid-section">
+                    <h2 class="who-paid-title">Kto platil?</h2>
+                    <div class="payer-field">
+                        <span>Martin</span>
+                        <img src="./icons/arrow-right.svg" alt="→" class="arrow-icon" />
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="pay-button">Zaplatiť</button>
+                    <button class="share-button">Zdieľať QuickSplit</button>
+                </div>
                 </div>
             </div>
 
-            <!-- Aktuálna skupina -->
-            <div id="currentGroup" class="current-group" style="display: none;">
-                <h3>Aktuálna skupina:</h3>
-                <div class="group-info">
-                    <span id="groupName">Názov skupiny</span>
-                    <span id="groupID">ID: ABC123</span>
+            <!-- Pockets page -->
+            <div class="page pockets-page" id="pockets-page">
+                <div class="page-inner">
+                <div class="pockets-header">
+                    <h1 class="pockets-title">Moje Pockety</h1>
+                    <button class="add-pocket-button">+</button>
                 </div>
-                
-                <!-- Členovia skupiny -->
-                <div class="members-section">
-                    <h4>Členovia skupiny (<span id="memberCount">0</span>)</h4>
-                    <div class="add-member">
-                        <input type="text" id="newMemberName" placeholder="Meno člena" class="member-input">
-                        <button id="addMemberBtn" class="btn btn-secondary">Pridať člena</button>
-                    </div>
-                    <div id="membersList" class="members-list"></div>
-                </div>
-                
-                <!-- Výdavky skupiny -->
-                <div class="expenses-section">
-                    <h4>Výdavky skupiny</h4>
-                    <div class="expenses-summary">
-                        <div class="summary-item">
-                            <span class="summary-label">Celkové výdavky:</span>
-                            <span id="totalExpenses" class="summary-value">0.00 €</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Na osobu:</span>
-                            <span id="perPersonAmount" class="summary-value">0.00 €</span>
+
+                <div class="pocket-card">
+                    <div class="pocket-title">Nová chladnička</div>
+                    <div class="pocket-participants">4 ľudia</div>
+                    <div class="pocket-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 75%"></div>
                         </div>
                     </div>
-                    <div class="add-expense">
-                        <input type="text" id="expenseDescription" placeholder="Popis výdavku" class="expense-input">
-                        <input type="number" id="expenseAmount" placeholder="Suma (€)" step="0.01" class="expense-input">
-                        <button id="addExpenseBtn" class="btn btn-secondary">Pridať výdavok</button>
+                    <div class="pocket-status">
+                        <span class="pocket-status-text owed">Dlužíš 20 €</span>
                     </div>
-                    <div id="expensesList" class="expenses-list"></div>
                 </div>
-                
-                <div class="group-actions-bottom">
-                    <button id="refreshGroupBtn" class="btn btn-secondary">🔄 Obnoviť</button>
-                    <button id="payMeBtn" class="btn btn-success">💰 Vyplatiť</button>
-                    <button id="leaveGroupBtn" class="btn btn-danger">Opustiť skupinu</button>
+
+                <div class="pocket-card">
+                    <div class="pocket-title">Chata 2025</div>
+                    <div class="pocket-participants">18 ľudí</div>
+                    <div class="pocket-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="pocket-status">
+                        <span class="pocket-status-text paid">Zaplatené</span>
+                    </div>
+                </div>
+
+                <div class="pocket-card">
+                    <div class="pocket-title">Kancel</div>
+                    <div class="pocket-participants">3 ľudia</div>
+                    <div class="pocket-participants">Máj</div>
+                    <div class="pocket-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="pocket-status">
+                        <span class="pocket-status-text paid">Zaplatené</span>
+                        <span class="pocket-icon">🔄</span>
+                    </div>
+                    <div class="pocket-amount">250 € mesačne</div>
+                </div>
+
+                <div class="pocket-card">
+                    <div class="pocket-title">Lyžovačka - Alpy</div>
+                    <div class="pocket-participants">8 ľudí</div>
+                    <div class="pocket-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 35%"></div>
+                        </div>
+                    </div>
+                    <div class="pocket-status">
+                        <span class="pocket-status-text owed-to-you">Dlužia ti 350 €</span>
+                    </div>
+                </div>
                 </div>
             </div>
 
-            <!-- Výdavky sekcia -->
-            <div class="card" id="expensesCard" style="display: none;">
-                <div class="expenses-header">
-                    <button id="backToGroupBtn" class="btn btn-secondary">← Späť ku skupine</button>
-                    <h2 class="card-title">Rozdeliť výdavok</h2>
+            <!-- Account page -->
+            <div class="page account-page" id="account-page">
+                <div class="page-inner">
+                <div class="profile-section">
+                    <h1 class="profile-title">Profil</h1>
+                    <div class="profile-greeting">Ahoj, Kristína</div>
+                    <div class="profile-amount">Zozbieraných 568€</div>
                 </div>
-                
-                <form id="expenseForm" class="expense-form">
-                    <div class="input-group">
-                        <label for="amount">Suma (€)</label>
-                        <input 
-                            type="number" 
-                            id="amount" 
-                            name="amount" 
-                            placeholder="0.00" 
-                            step="0.01" 
-                            min="0.01" 
-                            required
-                        >
+
+                <div class="user-details">
+                    <div class="detail-item">
+                        <div class="detail-info">
+                            <span class="detail-icon">👤</span>
+                            <span class="detail-text">Kristína Špirengová</span>
+                        </div>
+                        <span class="edit-button">Upraviť</span>
                     </div>
-
-                    <div class="input-group">
-                        <label for="people">Počet ľudí</label>
-                        <input 
-                            type="number" 
-                            id="people" 
-                            name="people" 
-                            placeholder="2" 
-                            min="2" 
-                            max="20" 
-                            required
-                        >
+                    <div class="detail-item">
+                        <div class="detail-info">
+                            <span class="detail-icon">📞</span>
+                            <span class="detail-text">+421 123 456 789</span>
+                        </div>
+                        <span class="edit-button">Upraviť</span>
                     </div>
+                    <div class="detail-item">
+                        <div class="detail-info">
+                            <span class="detail-icon">✉️</span>
+                            <span class="detail-text">spajrengova@gmail.com</span>
+                        </div>
+                        <span class="edit-button">Upraviť</span>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-info">
+                            <span class="detail-icon">💳</span>
+                            <span class="detail-text">SK12 3456 7890 1234 5678 9012</span>
+                        </div>
+                        <span class="edit-button">Upraviť</span>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-info">
+                            <span class="detail-icon">📍</span>
+                            <span class="detail-text">Slovensko</span>
+                        </div>
+                        <span class="edit-button">Upraviť</span>
+                    </div>
+                </div>
 
-                    <button type="submit" class="btn btn-primary">
-                        Rozdeliť sumu
-                    </button>
-                </form>
+                <div class="personalization-section">
+                    <h2 class="personalization-title">Personalizácia</h2>
+                    <div class="personalization-item">
+                        <div class="personalization-info">
+                            <span class="personalization-text">Farba</span>
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                    <div class="personalization-item">
+                        <div class="personalization-info">
+                            <span class="personalization-text">Jazyk</span>
+                        </div>
+                        <span class="personalization-value">Slovenčina</span>
+                    </div>
+                </div>
 
-                <div id="result" class="result-section" style="display: none;">
-                    <div class="result-header">
-                        <h3>Výsledok rozdelenia</h3>
-                        <div class="total-info">
-                            <span class="total-amount">Celková suma: <strong id="totalAmount">0.00 €</strong></span>
-                            <span class="per-person">Na osobu: <strong id="perPerson">0.00 €</strong></span>
+                <div class="security-section">
+                    <h2 class="security-title">Bezpečnosť</h2>
+                    <div class="security-item">
+                        <div class="security-info">
+                            <span class="security-text">🔒 Heslo</span>
+                        </div>
+                        <span class="edit-button">Upraviť</span>
+                    </div>
+                    <div class="security-item">
+                        <div class="security-info">
+                            <span class="security-text">👁️‍🗨️ Súkromie</span>
                         </div>
                     </div>
+                </div>
 
-                    <div class="payment-buttons" id="paymentButtons">
-                        <!-- Tlačidlá pre platby sa vygenerujú dynamicky -->
+                <div class="other-section">
+                    <h2 class="other-title">Iné</h2>
+                    <div class="other-item">
+                        <span class="other-text">ℹ️ Zistiť viac</span>
                     </div>
+                    <div class="other-item">
+                        <span class="other-text">🚪 Odhlásiť sa</span>
+                    </div>
+                    <div class="other-item">
+                        <span class="other-text danger">👤❌ Zmazať účet</span>
+                    </div>
+                </div>
                 </div>
             </div>
         </main>
 
-        <footer class="footer">
-            <p>&copy; 2024 GroupPocket - Verzia 0.1</p>
-        </footer>
-    </div>
-
-    <!-- Modálne okná -->
-    <div id="createGroupModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <h3>Vytvoriť novú skupinu</h3>
-            <form id="createGroupForm">
-                <div class="input-group">
-                    <label for="groupNameInput">Názov skupiny</label>
-                    <input type="text" id="groupNameInput" placeholder="Napríklad: Výlet do Tatier" required>
-                </div>
-                <div class="input-group">
-                    <label for="createUsernameInput">Tvoja prezívka</label>
-                    <input type="text" id="createUsernameInput" placeholder="Napríklad: Martin" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" id="cancelCreateGroup" class="btn btn-secondary">Zrušiť</button>
-                    <button type="submit" class="btn btn-primary">Vytvoriť skupinu</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="joinGroupModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <h3>Pripájať sa ku skupine</h3>
-            <form id="joinGroupForm">
-                <div class="input-group">
-                    <label for="groupIDInput">ID skupiny</label>
-                    <input type="text" id="groupIDInput" placeholder="Zadajte ID skupiny" required>
-                </div>
-                <div class="input-group">
-                    <label for="joinUsernameInput">Tvoja prezívka</label>
-                    <input type="text" id="joinUsernameInput" placeholder="Napríklad: Martin" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" id="cancelJoinGroup" class="btn btn-secondary">Zrušiť</button>
-                    <button type="submit" class="btn btn-primary">Pripájať sa</button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <!-- DEBUG: Skontroluj či sa načítal script -->
     <script>
         console.log('🔍 HTML načítaný, čakám na script.js...');
-        
-        // Skontroluj či existujú potrebné elementy
-        setTimeout(() => {
-            console.log('🔍 Kontrola elementov po 1s:');
-            console.log('- Form:', document.getElementById('expenseForm') ? '✅' : '❌');
-            console.log('- Result:', document.getElementById('result') ? '✅' : '❌');
-            console.log('- Payment buttons:', document.getElementById('paymentButtons') ? '✅' : '❌');
-        }, 1000);
     </script>
     
     <script src="./script.js"></script>
